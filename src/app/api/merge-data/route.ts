@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { datasets, mappings, identifierColumn, mergeStrategy } = validation.data;
+        const { datasets, mappings, identifierColumn, mergeStrategy, targetSchema } = validation.data;
 
-        const mergedData = mergeDatasets(datasets, mappings, identifierColumn, mergeStrategy);
+        const mergedData = mergeDatasets(datasets, mappings, identifierColumn, mergeStrategy, targetSchema);
 
         // Support CSV download via query param or generic response
         // For now returning JSON MergedData structure as per requirements mostly for API usage

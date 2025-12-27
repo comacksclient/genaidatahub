@@ -38,6 +38,7 @@ export const DataMergeRequestSchema = z.object({
     mappings: z.record(z.array(ColumnMappingSchema)),
     identifierColumn: z.string(),
     mergeStrategy: z.enum(['inner_join', 'left_join', 'outer_join', 'smart_merge']),
+    targetSchema: z.array(z.string()).optional(),
 });
 
 export const AnalysisRequestSchema = z.object({

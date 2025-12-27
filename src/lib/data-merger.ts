@@ -11,7 +11,8 @@ export function mergeDatasets(
     datasets: Dataset[],
     mappings: Record<string, ColumnMapping[]>,
     identifierColumn: string,
-    strategy: 'inner_join' | 'left_join' | 'outer_join' | 'smart_merge'
+    strategy: 'inner_join' | 'left_join' | 'outer_join' | 'smart_merge',
+    targetSchema?: string[]
 ): MergedData {
     // 1. Normalize all datasets: rename columns to target schema
     const normalizedDatasets = datasets.map(ds => {
@@ -21,8 +22,11 @@ export function mergeDatasets(
         const normalizedRows = ds.rows.map(row => {
             const newRow: Record<string, any> = {};
             Object.keys(row).forEach(key => {
-                const targetKey = mappingMap.get(key) || key; // Default to original if no mapping
-                // Handle conflicts? Last write wins for now within a row, but keys should be unique usually
+                const targetKey = mappingMap.get(key) || key;
+                // Only include if it's in targetSchema (if provided)
+                if (targetSchema && !targetSchema.includes(targetKey)) {
+                    return;
+                }
                 newRow[targetKey] = row[key];
             });
             return newRow;
@@ -33,10 +37,6 @@ export function mergeDatasets(
 
     // 2. Collect all unique Identifiers based on strategy
     const allIds = new Set<string>();
-    const idMap = new Map<string, Record<string, any>>(); // Merged rows
-
-    // Identify the KEY column in the target schema
-    // The identifierColumn passed here is the TARGET column name.
 
     normalizedDatasets.forEach((ds, index) => {
         ds.rows.forEach(row => {
@@ -44,18 +44,8 @@ export function mergeDatasets(
             if (idVal === undefined || idVal === null || idVal === '') return;
             const idStr = String(idVal);
 
-            if (strategy === 'left_join' && index > 0) {
-                // For left join, only add if ID exists (from first dataset)
-                // Actually, we build the ID set from the first dataset first.
-                return;
-            }
-            if (strategy === 'inner_join') {
-                // Logic for inner join is complex with Set. 
-                // We'll handle inner join by filtering later.
-                allIds.add(idStr);
-            } else {
-                allIds.add(idStr);
-            }
+            if (strategy === 'left_join' && index > 0) return;
+            allIds.add(idStr);
         });
     });
 
@@ -80,13 +70,19 @@ export function mergeDatasets(
             return intersection;
         }, sets[0] || new Set());
     } else {
-        // outer / smart
         validIds = allIds;
     }
 
     // 3. Merge Rows
     const mergedRows: Record<string, any>[] = [];
     const allColumns = new Set<string>();
+
+    // If targetSchema provided, initialize allColumns with it
+    if (targetSchema) {
+        targetSchema.forEach(c => allColumns.add(c));
+    }
+
+    let rowIndex = 1;
 
     validIds.forEach(id => {
         let mergedRow: Record<string, any> = { [identifierColumn]: id };
@@ -99,12 +95,26 @@ export function mergeDatasets(
             }
         });
 
-        Object.keys(mergedRow).forEach(k => allColumns.add(k));
-        mergedRows.push(mergedRow);
+        // Strict filtering & Filling missing values
+        const finalRow: Record<string, any> = { _row_index: rowIndex++ }; // Add row index
+
+        const outputColumns = targetSchema ? targetSchema : Object.keys(mergedRow);
+
+        outputColumns.forEach(col => {
+            // Fill missing values with empty string to ensure CSV structure
+            const val = mergedRow[col];
+            finalRow[col] = (val === undefined || val === null) ? "" : val;
+            if (!targetSchema) allColumns.add(col);
+        });
+
+        mergedRows.push(finalRow);
     });
 
+    // Ensure _row_index is first
+    const finalColumns = ['_row_index', ...(targetSchema || Array.from(allColumns).sort())];
+
     return {
-        columns: Array.from(allColumns),
+        columns: finalColumns,
         rows: mergedRows,
         metadata: {
             totalRows: mergedRows.length,
@@ -118,7 +128,8 @@ export function mergeDatasets(
 
 export function exportToCSV(data: MergedData): string {
     return Papa.unparse(data.rows, {
-        columns: data.columns,
-        header: true
+        columns: data.columns, // Use strict column order from metadata
+        header: true,
+        skipEmptyLines: true
     });
 }

@@ -9,7 +9,7 @@ import DataWorkbench from '@/components/DataWorkbench';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
 import { RefreshCw, ArrowRight, Loader2, Database, BrainCircuit, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { exportToCSV, mergeDatasets } from '@/lib/data-merger';
+import { mergeDatasets } from '@/lib/data-merger';
 
 export default function Home() {
   const [step, setStep] = useState<number>(0);
@@ -44,7 +44,8 @@ export default function Home() {
         files.map(f => ({ fileId: f.fileId, rows: f.rows || f.sampleRows })),
         mappingResponse.mappings,
         mappingResponse.commonIdentifiers[0] || 'id',
-        mappingResponse.mergeStrategy
+        mappingResponse.mergeStrategy,
+        mappingResponse.targetSchema
       );
 
       // In a real app with large data, we would call /api/merge-data
