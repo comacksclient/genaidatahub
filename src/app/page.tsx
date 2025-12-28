@@ -31,25 +31,23 @@ export default function Home() {
 
   const handleMappingComplete = (response: SchemaMapperResponse) => {
     setMappingResponse(response);
+    // Auto-merge to ensure syncing with latest configuration
+    performMerge(response);
   };
 
-  const performMerge = async () => {
-    if (!mappingResponse || files.length === 0) return;
+  const performMerge = async (mappingData: SchemaMapperResponse | null) => {
+    const mapData = mappingData || mappingResponse;
+    if (!mapData || files.length === 0) return;
     setIsMerging(true);
 
     try {
-      // We perform merge client-side for immediate feedback if we have rows
-      // or server-side if larger. For this app, we have full rows in state (files).
       const result = mergeDatasets(
         files.map(f => ({ fileId: f.fileId, rows: f.rows || f.sampleRows })),
-        mappingResponse.mappings,
-        mappingResponse.commonIdentifiers[0] || 'id',
-        mappingResponse.mergeStrategy,
-        mappingResponse.targetSchema
+        mapData.mappings,
+        mapData.commonIdentifiers[0] || 'id',
+        mapData.mergeStrategy,
+        mapData.targetSchema
       );
-
-      // In a real app with large data, we would call /api/merge-data
-      // const res = await fetch('/api/merge-data', ...);
 
       setMergedData(result);
       setStep(2);
@@ -91,42 +89,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 pb-20">
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-indigo-600 p-2 rounded-lg">
-              <Database className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">GenAI <span className="text-indigo-600">DataHub</span></h1>
-          </div>
-
-          {/* Progress Steps */}
-          <div className="hidden md:flex items-center space-x-4">
-            {[
-              { label: 'Upload', icon: FileSpreadsheet },
-              { label: 'Map Schema', icon: BrainCircuit },
-              { label: 'Merge', icon: Database },
-              { label: 'Analyze', icon: Loader2 }
-            ].map((s, i) => (
-              <div key={i} className={cn("flex items-center space-x-2 text-sm font-medium transition-colors",
-                step >= i ? "text-indigo-600" : "text-slate-400"
-              )}>
-                <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs border",
-                  step >= i ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-300"
-                )}>
-                  {i + 1}
-                </div>
-                <span>{s.label}</span>
-                {i < 3 && <div className="w-8 h-px bg-slate-200 mx-2" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      </header>
+      {/* ... Header ... */}
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         {step === 0 && (
+          // ... (CSVUpload)
           <div className="flex flex-col items-center space-y-8 animate-in slide-in-from-bottom-4 duration-500">
             <div className="text-center space-y-4 max-w-2xl">
               <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Unified Intelligence from Any Data Source</h2>
@@ -155,23 +122,12 @@ export default function Home() {
           <div className="space-y-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-800">Schema Mapping</h2>
-              <button onClick={() => setStep(0)} className="text-sm text-slate-500 hover:text-indigo-600">Back onto Upload</button>
+              <button onClick={() => setStep(0)} className="text-sm text-slate-500 hover:text-indigo-600">Back to Upload</button>
             </div>
 
             <SchemaMapper files={files} onMappingComplete={handleMappingComplete} />
 
-            {mappingResponse && (
-              <div className="flex justify-center pt-8 animate-in fade-in">
-                <button
-                  onClick={performMerge}
-                  disabled={isMerging}
-                  className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg flex items-center space-x-3 transition-transform hover:scale-105"
-                >
-                  {isMerging ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
-                  <span>{isMerging ? "Merging Data..." : "Execute Intelligent Merge"}</span>
-                </button>
-              </div>
-            )}
+            {/* Removed manual merge button to enforce "Confirm & Merge" flow */}
           </div>
         )}
 

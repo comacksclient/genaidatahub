@@ -67,7 +67,9 @@ export default function SchemaMapper({ files, onMappingComplete }: SchemaMapperP
             const data: SchemaMapperResponse = await res.json();
 
             // Update state with AI proposals
-            setTargetSchema(data.targetSchema);
+            const uniqueTargetSchema = Array.from(new Set(data.targetSchema));
+            setTargetSchema(uniqueTargetSchema);
+
             setMappings(data.mappings);
             setMergeStrategy(data.mergeStrategy);
             if (data.commonIdentifiers?.[0]) {
@@ -101,17 +103,27 @@ export default function SchemaMapper({ files, onMappingComplete }: SchemaMapperP
     };
 
     const addTargetColumn = () => {
-        const name = `New Column ${targetSchema.length + 1}`;
+        let name = `New Column ${targetSchema.length + 1}`;
+        let counter = 1;
+        while (targetSchema.includes(name)) {
+            name = `New Column ${targetSchema.length + 1 + counter}`;
+            counter++;
+        }
         setTargetSchema([...targetSchema, name]);
     };
 
     const removeTargetColumn = (col: string) => {
         setTargetSchema(targetSchema.filter(c => c !== col));
-        // Clean up mappings? Optional, data merger handles extra mappings fine usually or ignores them
     };
 
     const renameTargetColumn = (oldName: string, newName: string) => {
-        if (!newName) return;
+        if (!newName || oldName === newName) return;
+        if (targetSchema.includes(newName)) {
+            // Prevent duplicate names or handle gracefully? 
+            // For now, prevent default rename if exists to maintain uniqueness
+            return;
+        }
+
         setTargetSchema(targetSchema.map(c => c === oldName ? newName : c));
         // Update mappings to point to new name
         setMappings(prev => {
@@ -250,6 +262,7 @@ export default function SchemaMapper({ files, onMappingComplete }: SchemaMapperP
                         <option value="outer_join">Full Outer Join (Keep all rows)</option>
                         <option value="inner_join">Inner Join (Only matching rows)</option>
                         <option value="left_join">Left Join (Keep first file rows)</option>
+                        <option value="append">Append (UNION - Stack all files)</option>
                     </select>
                 </div>
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

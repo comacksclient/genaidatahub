@@ -71,7 +71,7 @@ const getLLM = () => {
 
 export async function generateSchemaMappings(files: UploadedFile[]): Promise<SchemaMapperResponse> {
     const llm = getLLM();
-    const parser = StructuredOutputParser.fromZodSchema(ZodSchemaResponse);
+    const parser = StructuredOutputParser.fromZodSchema(ZodSchemaResponse as any);
     const formatInstructions = parser.getFormatInstructions();
 
     const fileSummaries = files.map(f => ({
@@ -92,7 +92,7 @@ export async function generateSchemaMappings(files: UploadedFile[]): Promise<Sch
         1. Identify equivalent columns across files (mappings).
         2. Identify the best common identifier to join on.
         3. Suggest a merge strategy (inner, left, outer, smart).
-        4. Define a unified target schema.
+        4. Define a unified target schema. Ensure no duplicate columns.
 
         {format_instructions}
         
