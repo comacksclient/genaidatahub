@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSchemaMappings } from '@/lib/llm';
 import { SchemaMappingRequestSchema } from '@/lib/schemas';
@@ -24,7 +23,14 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const mappings = await generateSchemaMappings(files);
+
+        const filesForAI = files.map(f => ({
+            ...f,
+            totalRows: 0,
+            quality: 100
+        }));
+
+        const mappings = await generateSchemaMappings(filesForAI);
         return NextResponse.json(mappings);
 
     } catch (error) {
